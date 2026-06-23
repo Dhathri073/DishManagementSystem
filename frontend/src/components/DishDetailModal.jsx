@@ -4,6 +4,7 @@
  */
 
 import React, { useState } from "react";
+import { resolveImageUrl } from "../utils/imageUrl";
 
 export default function DishDetailModal({ dish, onClose, onToggle, onDelete }) {
   const [imgError, setImgError] = useState(false);
@@ -41,7 +42,7 @@ export default function DishDetailModal({ dish, onClose, onToggle, onDelete }) {
           dark:from-slate-700 dark:to-slate-800">
           {!imgError && dish.imageUrl ? (
             <img
-              src={dish.imageUrl}
+              src={resolveImageUrl(dish.imageUrl)}
               alt={dish.dishName}
               className="w-full h-full object-cover"
               onError={() => setImgError(true)}

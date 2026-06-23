@@ -6,6 +6,7 @@ Configures CORS, WebSocket endpoint, and API routes.
 import os
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 
 from app.database import connect_db, close_db
@@ -37,6 +38,11 @@ app.add_middleware(
 # Register routes
 app.include_router(dish_router)
 app.include_router(activities_router)
+
+# Serve uploaded images as static files at /uploads/<filename>
+UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "..", "uploads")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 
 @app.on_event("startup")

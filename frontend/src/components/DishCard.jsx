@@ -3,6 +3,7 @@
  * Action buttons stop propagation so they don't trigger the modal.
  */
 import React, { useState } from "react";
+import { resolveImageUrl } from "../utils/imageUrl";
 
 export default function DishCard({ dish, onToggle, onDelete, onClick }) {
   const [imgError, setImgError] = useState(false);
@@ -38,7 +39,7 @@ export default function DishCard({ dish, onToggle, onDelete, onClick }) {
       <div className="relative h-44 bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800 overflow-hidden">
         {!imgError && dish.imageUrl ? (
           <img
-            src={dish.imageUrl}
+            src={resolveImageUrl(dish.imageUrl)}
             alt={dish.dishName}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             onError={() => setImgError(true)}

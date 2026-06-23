@@ -4,6 +4,7 @@
 
 import React, { useState, useRef, useCallback } from "react";
 import { dishApi } from "../services/api";
+import { resolveImageUrl } from "../utils/imageUrl";
 import toast from "react-hot-toast";
 
 export default function AddDishModal({ onClose, onCreate }) {
@@ -42,15 +43,19 @@ export default function AddDishModal({ onClose, onCreate }) {
     const preview = URL.createObjectURL(file);
     setImagePreview(preview);
 
-    // Upload to backend
+    // Upload to backend — get back a /uploads/... path
     setUploading(true);
     try {
       const { imageUrl: url } = await dishApi.uploadImage(file);
       setImageUrl(url);
+      // Replace blob preview with the actual served URL
+      URL.revokeObjectURL(preview);
+      setImagePreview(resolveImageUrl(url));
       setErrors((e) => ({ ...e, image: undefined }));
     } catch (err) {
       toast.error("Upload failed: " + err.message);
       setImagePreview("");
+      URL.revokeObjectURL(preview);
     } finally {
       setUploading(false);
     }

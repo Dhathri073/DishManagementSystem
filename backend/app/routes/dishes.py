@@ -12,7 +12,8 @@ from fastapi import APIRouter, HTTPException, status, UploadFile, File
 from fastapi.responses import JSONResponse
 from datetime import datetime, timezone
 import uuid
-import base64
+import os
+import shutil
 
 from app.database import get_db
 from app.models import DishCreate, DishResponse
@@ -22,17 +23,18 @@ router = APIRouter(prefix="/api/dishes", tags=["dishes"])
 activities_router = APIRouter(prefix="/api/activities", tags=["activities"])
 
 MAX_SIZE_MB = 5
+UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "uploads")
 
-# Magic-byte signatures — no stdlib dependency
+# Magic-byte signatures
 _SIGNATURES = {
     "jpeg": [(0, b"\xff\xd8\xff")],
     "png":  [(0, b"\x89PNG\r\n\x1a\n")],
     "gif":  [(0, b"GIF87a"), (0, b"GIF89a")],
     "webp": [(0, b"RIFF"), (8, b"WEBP")],
 }
+_EXT = {"jpeg": "jpg", "png": "png", "gif": "gif", "webp": "webp"}
 
 def _detect_image_type(data: bytes) -> str | None:
-    """Return image type string or None if unrecognised."""
     for img_type, sigs in _SIGNATURES.items():
         if all(data[off:off+len(sig)] == sig for off, sig in sigs):
             return img_type
@@ -74,23 +76,28 @@ async def get_dishes():
 @router.post("/upload-image")
 async def upload_image(file: UploadFile = File(...)):
     """
-    Accept an image upload, validate type/size,
-    and return a base64 data URL stored as imageUrl.
+    Save uploaded image to disk, return a /uploads/<filename> URL.
+    Avoids base64 bloat in MongoDB and serves images efficiently.
     """
     contents = await file.read()
 
-    # Size check
     if len(contents) / (1024 * 1024) > MAX_SIZE_MB:
         raise HTTPException(400, f"Image must be under {MAX_SIZE_MB}MB")
 
-    # Type check via magic bytes
     img_type = _detect_image_type(contents)
     if img_type is None:
         raise HTTPException(400, "Only JPEG, PNG, GIF, WebP images are allowed")
 
-    encoded = base64.b64encode(contents).decode("utf-8")
-    data_url = f"data:image/{img_type};base64,{encoded}"
-    return {"imageUrl": data_url}
+    # Save with a unique filename
+    ext = _EXT[img_type]
+    filename = f"{uuid.uuid4()}.{ext}"
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    filepath = os.path.join(UPLOAD_DIR, filename)
+    with open(filepath, "wb") as f:
+        f.write(contents)
+
+    # Return the static path — frontend prepends the backend base URL
+    return {"imageUrl": f"/uploads/{filename}"}
 
 
 @router.post("", response_model=DishResponse, status_code=status.HTTP_201_CREATED)

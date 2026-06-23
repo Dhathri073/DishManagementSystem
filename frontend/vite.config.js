@@ -6,12 +6,14 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      // Proxy REST API calls to FastAPI
       "/api": {
         target: "http://localhost:8000",
         changeOrigin: true,
       },
-      // Proxy WebSocket connection to FastAPI
+      "/uploads": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+      },
       "/ws": {
         target: "ws://localhost:8000",
         ws: true,
