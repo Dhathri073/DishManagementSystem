@@ -1,26 +1,25 @@
 /**
  * Root application component.
- * Orchestrates layout, filtering, sorting, pagination, and modals.
  */
-
 import React, { useState, useMemo } from "react";
 import Header from "./components/Header";
 import StatsCards from "./components/StatsCards";
 import Filters from "./components/Filters";
 import DishCard from "./components/DishCard";
-import SkeletonCard from "./components/SkeletonCard";
+import { SkeletonGrid } from "./components/SkeletonCard";
 import Pagination from "./components/Pagination";
 import AddDishModal from "./components/AddDishModal";
+import DishDetailModal from "./components/DishDetailModal";
 import PublicationChart from "./components/PublicationChart";
+import RecentActivities from "./components/RecentActivities";
 import ErrorBanner from "./components/ErrorBanner";
 import { useDishes } from "./hooks/useDishes";
 
 const PAGE_SIZE = 12;
 
 export default function App() {
-  const { dishes, loading, error, createDish, toggleDish, deleteDish, refetch } = useDishes();
+  const { dishes, activities, loading, error, createDish, toggleDish, deleteDish, refetch } = useDishes();
 
-  // UI state
   const [darkMode, setDarkMode] = useState(
     () => window.matchMedia("(prefers-color-scheme: dark)").matches
   );
@@ -28,31 +27,46 @@ export default function App() {
   const [filter, setFilter] = useState("all");
   const [sort, setSort] = useState("newest");
   const [page, setPage] = useState(1);
-  const [showModal, setShowModal] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [selectedDish, setSelectedDish] = useState(null);
 
-  // Apply dark mode class on <html>
   React.useEffect(() => {
     document.documentElement.classList.toggle("dark", darkMode);
   }, [darkMode]);
 
-  // Reset to page 1 when search/filter/sort changes
   React.useEffect(() => { setPage(1); }, [search, filter, sort]);
 
-  // Derived: filter + search + sort
+  // Close detail modal if the dish was deleted via WS; keep it synced if updated
+  React.useEffect(() => {
+    if (!selectedDish) return;
+    const updated = dishes.find((d) => d.dishId === selectedDish.dishId);
+    if (!updated) {
+      setSelectedDish(null);
+    } else if (updated !== selectedDish) {
+      setSelectedDish(updated);
+    }
+  }, [dishes]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const processed = useMemo(() => {
     let result = [...dishes];
 
-    // Filter by status
+    // Status filter chips
     if (filter === "published") result = result.filter((d) => d.isPublished);
     else if (filter === "unpublished") result = result.filter((d) => !d.isPublished);
 
-    // Search by name
+    // Search: by name OR by typing "published" / "unpublished"
     if (search.trim()) {
-      const q = search.toLowerCase();
-      result = result.filter((d) => d.dishName.toLowerCase().includes(q));
+      const q = search.toLowerCase().trim();
+      result = result.filter((d) => {
+        const nameMatch = d.dishName.toLowerCase().includes(q);
+        const statusMatch =
+          (q === "published" && d.isPublished) ||
+          (q === "unpublished" && !d.isPublished) ||
+          (q === "draft" && !d.isPublished);
+        return nameMatch || statusMatch;
+      });
     }
 
-    // Sort
     result.sort((a, b) => {
       if (sort === "newest") return new Date(b.createdAt) - new Date(a.createdAt);
       if (sort === "oldest") return new Date(a.createdAt) - new Date(b.createdAt);
@@ -64,7 +78,6 @@ export default function App() {
     return result;
   }, [dishes, filter, search, sort]);
 
-  // Pagination
   const totalPages = Math.ceil(processed.length / PAGE_SIZE);
   const paginated = processed.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
@@ -84,61 +97,88 @@ export default function App() {
         {/* Stats */}
         <StatsCards dishes={dishes} loading={loading} />
 
-        {/* Chart + Filters row */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          <div className="lg:col-span-1">
-            <PublicationChart dishes={dishes} />
-          </div>
-          <div className="lg:col-span-3 flex flex-col justify-center">
+        {/* Charts + Activities + Filters */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <PublicationChart dishes={dishes} />
+          <RecentActivities activities={activities} loading={loading} />
+          <div className="flex flex-col justify-center">
             <Filters
               filter={filter}
               sort={sort}
               onFilter={setFilter}
               onSort={setSort}
-              onAdd={() => setShowModal(true)}
+              onAdd={() => setShowAddModal(true)}
+              resultCount={processed.length}
+              totalCount={dishes.length}
+              search={search}
             />
           </div>
         </div>
 
-        {/* Error state */}
+        {/* Error */}
         {error && !loading && <ErrorBanner message={error} onRetry={refetch} />}
 
         {/* Dish Grid */}
         {!error && (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-              {loading
-                ? Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)
-                : paginated.map((dish) => (
+            {loading ? (
+              <SkeletonGrid count={8} />
+            ) : (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+                  {paginated.map((dish) => (
                     <DishCard
                       key={dish.dishId}
                       dish={dish}
                       onToggle={toggleDish}
                       onDelete={deleteDish}
+                      onClick={() => setSelectedDish(dish)}
                     />
                   ))}
-            </div>
+                </div>
 
-            {/* Empty state */}
-            {!loading && processed.length === 0 && (
-              <div className="text-center py-20 animate-fade-in">
-                <span className="text-6xl">🍽️</span>
-                <p className="mt-4 text-slate-500 dark:text-slate-400">
-                  {search || filter !== "all" ? "No dishes match your filters." : "No dishes yet. Add your first one!"}
-                </p>
-              </div>
+                {/* Empty state */}
+                {processed.length === 0 && (
+                  <div className="text-center py-20 animate-fade-in">
+                    <span className="text-6xl">🍽️</span>
+                    <p className="mt-4 text-slate-500 dark:text-slate-400">
+                      {search || filter !== "all"
+                        ? `No dishes match "${search || filter}".`
+                        : "No dishes yet. Add your first one!"}
+                    </p>
+                    {(search || filter !== "all") && (
+                      <button
+                        onClick={() => { setSearch(""); setFilter("all"); }}
+                        className="mt-3 text-sm text-violet-600 dark:text-violet-400 hover:underline"
+                      >
+                        Clear filters
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                <Pagination page={page} totalPages={totalPages} onPage={setPage} />
+              </>
             )}
-
-            <Pagination page={page} totalPages={totalPages} onPage={setPage} />
           </>
         )}
       </main>
 
       {/* Add Dish Modal */}
-      {showModal && (
+      {showAddModal && (
         <AddDishModal
-          onClose={() => setShowModal(false)}
+          onClose={() => setShowAddModal(false)}
           onCreate={createDish}
+        />
+      )}
+
+      {/* Dish Detail Modal */}
+      {selectedDish && (
+        <DishDetailModal
+          dish={selectedDish}
+          onClose={() => setSelectedDish(null)}
+          onToggle={toggleDish}
+          onDelete={deleteDish}
         />
       )}
     </div>

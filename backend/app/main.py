@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
 from app.database import connect_db, close_db
-from app.routes.dishes import router as dish_router
+from app.routes.dishes import router as dish_router, activities_router
 from app.websocket_manager import manager
 
 load_dotenv()
@@ -34,8 +34,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Register dish routes
+# Register routes
 app.include_router(dish_router)
+app.include_router(activities_router)
 
 
 @app.on_event("startup")

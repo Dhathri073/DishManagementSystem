@@ -37,4 +37,19 @@ export const dishApi = {
 
   /** Delete a dish */
   delete: (dishId) => api.delete(`/api/dishes/${dishId}`),
+
+  /** Upload an image file, returns { imageUrl: "data:..." } */
+  uploadImage: (file) => {
+    const form = new FormData();
+    form.append("file", file);
+    // Do NOT set Content-Type — let the browser set it with the correct boundary
+    return api
+      .post("/api/dishes/upload-image", form, {
+        headers: { "Content-Type": undefined },
+      })
+      .then((r) => r.data);
+  },
+
+  /** Recent activity log */
+  getActivities: () => api.get("/api/activities").then((r) => r.data),
 };

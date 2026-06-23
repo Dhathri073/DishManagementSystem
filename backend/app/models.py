@@ -11,8 +11,17 @@ import uuid
 class DishCreate(BaseModel):
     """Schema for creating a new dish."""
     dishName: str = Field(..., min_length=1, max_length=200)
-    imageUrl: str = Field(..., min_length=1)
+    imageUrl: str = Field(default="", )
     isPublished: bool = Field(default=False)
+
+
+class ActivityLog(BaseModel):
+    """Schema for a recent activity entry."""
+    activityId: str
+    dishId: str
+    dishName: str
+    action: str          # "created" | "published" | "unpublished" | "deleted"
+    timestamp: datetime
 
 
 class DishUpdate(BaseModel):
