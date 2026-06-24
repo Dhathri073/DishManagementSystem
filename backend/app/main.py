@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 
 from app.database import connect_db, close_db
-from app.routes.dishes import router as dish_router, activities_router
+from app.routes.dishes import router as dish_router, activities_router, menu_router
 from app.websocket_manager import manager
 
 load_dotenv()
@@ -37,6 +37,7 @@ app.add_middleware(
 
 # Register routes
 app.include_router(dish_router)
+app.include_router(menu_router)
 app.include_router(activities_router)
 
 # Serve uploaded images as static files at /uploads/<filename>

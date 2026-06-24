@@ -1,8 +1,6 @@
 /**
- * Central state hook for dishes + activity log.
- * Handles fetch, create, toggle, delete, and WebSocket sync.
+ * Central state hook for admin dishes + activity log.
  */
-
 import { useState, useEffect, useCallback } from "react";
 import toast from "react-hot-toast";
 import { dishApi } from "../services/api";
@@ -34,15 +32,10 @@ export function useDishes() {
 
   useEffect(() => { fetchDishes(); }, [fetchDishes]);
 
-  // Refresh activities after any change
   const refreshActivities = useCallback(async () => {
-    try {
-      const data = await dishApi.getActivities();
-      setActivities(data);
-    } catch (_) {}
+    try { setActivities(await dishApi.getActivities()); } catch (_) {}
   }, []);
 
-  // WebSocket event handler
   const handleWsMessage = useCallback((msg) => {
     if (msg.event === "dish_created") {
       setDishes((prev) => {
@@ -52,9 +45,7 @@ export function useDishes() {
       toast.success(`"${msg.dish.dishName}" added`);
       refreshActivities();
     } else if (msg.event === "dish_updated") {
-      setDishes((prev) =>
-        prev.map((d) => (d.dishId === msg.dish.dishId ? msg.dish : d))
-      );
+      setDishes((prev) => prev.map((d) => (d.dishId === msg.dish.dishId ? msg.dish : d)));
       refreshActivities();
     } else if (msg.event === "dish_deleted") {
       setDishes((prev) => prev.filter((d) => d.dishId !== msg.dishId));
@@ -75,21 +66,24 @@ export function useDishes() {
     await promise;
   }, []);
 
-  const toggleDish = useCallback(async (dishId) => {
+  const updateDish = useCallback(async (dishId, data) => {
     try {
-      await dishApi.toggle(dishId);
+      await dishApi.update(dishId, data);
+      toast.success("Dish updated!");
     } catch (err) {
       toast.error(err.message);
     }
+  }, []);
+
+  const toggleDish = useCallback(async (dishId) => {
+    try { await dishApi.toggle(dishId); }
+    catch (err) { toast.error(err.message); }
   }, []);
 
   const deleteDish = useCallback(async (dishId) => {
-    try {
-      await dishApi.delete(dishId);
-    } catch (err) {
-      toast.error(err.message);
-    }
+    try { await dishApi.delete(dishId); }
+    catch (err) { toast.error(err.message); }
   }, []);
 
-  return { dishes, activities, loading, error, createDish, toggleDish, deleteDish, refetch: fetchDishes };
+  return { dishes, activities, loading, error, createDish, updateDish, toggleDish, deleteDish, refetch: fetchDishes };
 }

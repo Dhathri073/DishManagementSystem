@@ -26,6 +26,8 @@ async def connect_db():
     await db.dishes.create_index("dishId", unique=True)
     await db.dishes.create_index("dishName")
     await db.dishes.create_index("createdAt")
+    await db.dishes.create_index("category")
+    await db.dishes.create_index("isPublished")
     print(f"Connected to MongoDB: {DATABASE_NAME}")
 
 

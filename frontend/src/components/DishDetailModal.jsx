@@ -72,8 +72,26 @@ export default function DishDetailModal({ dish, onClose, onToggle, onDelete }) {
         <div className="p-6 space-y-4">
           <h2 className="text-xl font-bold text-slate-800 dark:text-white">{dish.dishName}</h2>
 
+          {dish.description && (
+            <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+              {dish.description}
+            </p>
+          )}
+
           {/* Metadata grid */}
           <div className="grid grid-cols-2 gap-3">
+            <div className="bg-white/30 dark:bg-slate-700/30 rounded-xl p-3">
+              <p className="text-xs text-slate-400 dark:text-slate-500 mb-1">Category</p>
+              <p className="text-xs font-medium text-slate-700 dark:text-slate-300">{dish.category || "—"}</p>
+            </div>
+
+            <div className="bg-white/30 dark:bg-slate-700/30 rounded-xl p-3">
+              <p className="text-xs text-slate-400 dark:text-slate-500 mb-1">Price</p>
+              <p className="text-xs font-bold text-violet-600 dark:text-violet-400">
+                {dish.price > 0 ? `$${parseFloat(dish.price).toFixed(2)}` : "—"}
+              </p>
+            </div>
+
             <div className="bg-white/30 dark:bg-slate-700/30 rounded-xl p-3">
               <p className="text-xs text-slate-400 dark:text-slate-500 mb-1">Dish ID</p>
               <div className="flex items-center gap-2">
