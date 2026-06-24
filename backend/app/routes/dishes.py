@@ -92,19 +92,32 @@ async def get_dishes():
 
 @router.post("/upload-image")
 async def upload_image(file: UploadFile = File(...)):
-    """Save uploaded image, return /uploads/<filename> path."""
+    """
+    Save uploaded image to disk (dev) or return base64 data URL (production).
+    Render free tier has no persistent disk, so we use base64 stored in MongoDB.
+    """
     contents = await file.read()
     if len(contents) / (1024 * 1024) > MAX_SIZE_MB:
         raise HTTPException(400, f"Image must be under {MAX_SIZE_MB}MB")
     img_type = _detect_image_type(contents)
     if img_type is None:
         raise HTTPException(400, "Only JPEG, PNG, GIF, WebP images are allowed")
-    ext = _EXT[img_type]
-    filename = f"{uuid.uuid4()}.{ext}"
-    os.makedirs(UPLOAD_DIR, exist_ok=True)
-    with open(os.path.join(UPLOAD_DIR, filename), "wb") as f:
-        f.write(contents)
-    return {"imageUrl": f"/uploads/{filename}"}
+
+    # In production (no writable /uploads), return base64 data URL
+    # In dev, save to disk and return a path
+    try:
+        os.makedirs(UPLOAD_DIR, exist_ok=True)
+        ext = _EXT[img_type]
+        filename = f"{uuid.uuid4()}.{ext}"
+        filepath = os.path.join(UPLOAD_DIR, filename)
+        with open(filepath, "wb") as f:
+            f.write(contents)
+        return {"imageUrl": f"/uploads/{filename}"}
+    except OSError:
+        # Fallback: return base64 data URL (works everywhere, no disk needed)
+        import base64
+        encoded = base64.b64encode(contents).decode("utf-8")
+        return {"imageUrl": f"data:image/{img_type};base64,{encoded}"}
 
 
 @router.post("", response_model=DishResponse, status_code=status.HTTP_201_CREATED)

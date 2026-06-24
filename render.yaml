@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: dishboard-api
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: MONGODB_URI
+        sync: false          # set manually in Render dashboard
+      - key: DATABASE_NAME
+        value: dish_management
+      - key: ALLOWED_ORIGINS
+        sync: false          # set to your Vercel URL after deploy
+    healthCheckPath: /health
